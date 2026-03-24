@@ -14,6 +14,11 @@ help:
 	@echo "Configuration:"
 	@echo "  Edit deploy/labs.yaml to specify target host(s)"
 	@echo ""
+	@echo "Docker Registry Credentials:"
+	@echo "  Set environment variables DOCKER_USER and DOCKER_PASSWORD, or"
+	@echo "  Pass via command line:"
+	@echo "    make deploy DOCKER_USER=myuser DOCKER_PASSWORD=mypass"
+	@echo ""
 
 # Check dependencies
 check-deps:
@@ -33,7 +38,11 @@ setup-inventory:
 # Deploy entire stack
 deploy: check-deps setup-inventory
 	@echo "Starting deployment of Jalapeno BMP Demo..."
-	@cd deploy && ansible-playbook -u ins -k site.yaml
+	@if [ -n "$(DOCKER_USER)" ] && [ -n "$(DOCKER_PASSWORD)" ]; then \
+		cd deploy && ansible-playbook -u ins -k site.yaml -e "docker_user=$(DOCKER_USER)" -e "docker_password=$(DOCKER_PASSWORD)"; \
+	else \
+		cd deploy && ansible-playbook -u ins -k site.yaml; \
+	fi
 	@echo ""
 	@echo "Deployment complete!"
 	@echo ""

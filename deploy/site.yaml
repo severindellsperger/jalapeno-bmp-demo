@@ -8,6 +8,10 @@
     containerlab_version: 0.71.1
     containerlab_xrd: true
     go_version: 1.25.4
+    # Docker registry credentials (override with -e or in inventory)
+    docker_user: "{{ lookup('env', 'DOCKER_USER') | default('very_secure_username', true) }}"
+    docker_password: "{{ lookup('env', 'DOCKER_PASSWORD') | default('very_secure_password', true) }}"
+    docker_registry: registry.gitlab.ost.ch:45023
   tasks:
     - name: Deploy Kubernetes, Containerlab, and dependencies (as root)
       become: true
@@ -39,9 +43,6 @@
         # Deploy Containerlab topology
         - name: Deploy Containerlab topology
           vars:
-            docker_user: ibn-closing-pull
-            docker_password: yua14FsNtb6UNdCHXso1
-            docker_registry: registry.gitlab.ost.ch:45023
             clab_file: ./closing.clab.yaml
           block:
             - name: Docker login
@@ -49,6 +50,9 @@
                 registry_url: "{{ docker_registry }}"
                 username: "{{ docker_user }}"
                 password: "{{ docker_password }}"
+              when:
+                - docker_user != 'very_secure_username'
+                - docker_password != 'very_secure_password'
 
             - name: Deploy lab via containerlab
               ansible.builtin.command: containerlab deploy --topo {{ clab_file }}

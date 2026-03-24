@@ -12,6 +12,77 @@ This repository provides a complete single-node deployment combining:
 
 ## Architecture
 
+### Network Diagram
+
+```mermaid
+graph TB
+    subgraph Host["Host Machine (192.168.1.100)"]
+        subgraph K8s["MicroK8s (NodePort Services)"]
+            BMP["BMP Server<br/>:30511"]
+            TEL["Telegraf<br/>:32400"]
+            GRAF["Grafana<br/>:30333"]
+            ARANGO["ArangoDB<br/>:30852"]
+            KAFKA["Kafka UI<br/>:30777"]
+            INFLUX["InfluxDB<br/>:30308"]
+        end
+
+        subgraph CL["Containerlab Network<br/>(172.30.0.0/24)"]
+            GW["Gateway<br/>172.30.0.1"]
+
+            subgraph Fabric["Fabric Routers"]
+                R01["r01<br/>172.30.0.11<br/>1:1:1:1::"]
+                R02["r02<br/>172.30.0.12<br/>2:2:2:2::"]
+                R03["r03<br/>172.30.0.13<br/>3:3:3:3::"]
+                R04["r04<br/>172.30.0.14<br/>4:4:4:4::"]
+                R05["r05<br/>172.30.0.15<br/>5:5:5:5::"]
+                R06["r06<br/>172.30.0.16<br/>6:6:6:6::"]
+                R07["r07<br/>172.30.0.17<br/>7:7:7:7::"]
+            end
+
+            SA["server-a<br/>172.30.0.31<br/>10.1.0.0/24"]
+            SB["server-b<br/>172.30.0.32<br/>10.2.0.0/24"]
+        end
+    end
+
+    %% Physical topology
+    R01 --- R02
+    R01 --- R03
+    R02 --- R03
+    R02 --- R04
+    R02 --- R06
+    R03 --- R04
+    R03 --- R05
+    R04 --- R05
+    R04 --- R06
+    R05 --- R06
+    R05 --- R07
+    R06 --- R07
+    R01 --- SA
+    R07 --- SB
+
+    %% BMP/Telemetry connections
+    R01 -.BMP/Telemetry.-> GW
+    R02 -.Telemetry.-> GW
+    R03 -.Telemetry.-> GW
+    R04 -.Telemetry.-> GW
+    R05 -.Telemetry.-> GW
+    R06 -.Telemetry.-> GW
+    R07 -.BMP/Telemetry.-> GW
+    GW --> BMP
+    GW --> TEL
+
+    %% BGP peering
+    R01 -.BGP.-> R07
+
+    style Host fill:#f9f9f9,stroke:#333,stroke-width:3px
+    style K8s fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
+    style CL fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style Fabric fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style BMP fill:#4caf50,stroke:#2e7d32
+    style TEL fill:#4caf50,stroke:#2e7d32
+    style GW fill:#ff9800,stroke:#e65100,stroke-width:2px
+```
+
 The deployment runs entirely on a single host:
 - **Jalapeno Services** (via MicroK8s NodePort):
   - BMP Server (gobmp): Port 30511
@@ -33,6 +104,54 @@ The deployment runs entirely on a single host:
 - Python 3.10+
 - Ansible installed on deployment machine
 - SSH access to target host
+
+## Configuration
+
+### Password Management
+
+This deployment requires several passwords to be configured:
+
+#### 1. SSH Password (Target Host)
+The Ansible playbook will prompt for the SSH password to access the target host as user `ins`.
+
+#### 2. Docker Registry Credentials
+If using a private Docker registry (default: `registry.gitlab.ost.ch:45023`), configure credentials:
+
+**Option A - Environment Variables**:
+```bash
+export DOCKER_USER=your_username
+export DOCKER_PASSWORD=your_password
+make deploy
+```
+
+**Option B - Command Line**:
+```bash
+make deploy DOCKER_USER=your_username DOCKER_PASSWORD=your_password
+```
+
+**Option C - Ansible Extra Vars**:
+```bash
+cd deploy
+ansible-playbook -u ins -k site.yaml -e "docker_user=your_username" -e "docker_password=your_password"
+```
+
+If credentials are not provided, the deployment will skip Docker registry login (using placeholder defaults).
+
+#### 3. XRd Router Passwords
+Router CLI passwords are configured in `deploy/config/r*.cfg` files:
+- Default username: `cisco` (r01, r02, r04-r07) or `ins` (r03)
+- Default password: `very_secure_password`
+
+**To customize router passwords**, edit the `secret` line in each router config file:
+```
+username cisco
+ secret YOUR_CUSTOM_PASSWORD
+```
+
+After deployment, access routers via:
+```bash
+ssh cisco@172.30.0.11  # Use your configured password
+```
 
 ## Quick Start
 
@@ -142,7 +261,7 @@ sudo containerlab inspect -t deploy/closing.clab.yaml
 
 **Access router CLI**:
 ```bash
-ssh cisco@172.30.0.11  # Password: ciscocisco
+ssh cisco@172.30.0.11  # Password: very_secure_password (or your custom password)
 ```
 
 **Check Jalapeno pods**:
