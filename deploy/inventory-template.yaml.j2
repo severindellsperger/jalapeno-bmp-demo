@@ -1,16 +1,7 @@
 all:
-  children:
-    jagw:
-      hosts:
+  hosts:
 {% for ip in labs %}
-        jagw{{ '%02d' % loop.index }}:
-          ansible_host: "{{ ip }}"
-          ansible_port: 20011
-{% endfor %}
-    infra:
-      hosts:
-{% for ip in labs %}
-        infra{{ '%02d' % loop.index }}:
-          ansible_host: "{{ ip }}"
-          ansible_port: 20021
+    lab{{ '%02d' % loop.index }}:
+      ansible_host: "{{ ip }}"
+      ansible_port: 22
 {% endfor %}
