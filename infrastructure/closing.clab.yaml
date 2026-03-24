@@ -1,0 +1,82 @@
+name: closing
+prefix: ""
+
+mgmt:
+  network: mgmt
+  ipv4-subnet: 172.30.0.0/24
+
+topology:
+  kinds:
+    xrd:
+      image: registry.gitlab.ost.ch:45023/ins-infrastructure/kubevirt-images/xrd-control-plane:24.4.1
+    linux:
+      image: ghcr.io/srl-labs/network-multitool:v0.2.1
+      exec:
+        - bash /tmp/startup.sh
+  nodes:
+    # Fabric
+    r01:
+      kind: xrd
+      mgmt-ipv4: 172.30.0.11
+      startup-config: config/r01.cfg
+      group: fabric
+    r02:
+      kind: xrd
+      mgmt-ipv4: 172.30.0.12
+      startup-config: config/r02.cfg
+      group: fabric
+    r03:
+      kind: xrd
+      mgmt-ipv4: 172.30.0.13
+      startup-config: config/r03.cfg
+      group: fabric
+    r04:
+      kind: xrd
+      mgmt-ipv4: 172.30.0.14
+      startup-config: config/r04.cfg
+      group: fabric
+    r05:
+      kind: xrd
+      mgmt-ipv4: 172.30.0.15
+      startup-config: config/r05.cfg
+      group: fabric
+    r06:
+      kind: xrd
+      mgmt-ipv4: 172.30.0.16
+      startup-config: config/r06.cfg
+      group: fabric
+    r07:
+      kind: xrd
+      mgmt-ipv4: 172.30.0.17
+      startup-config: config/r07.cfg
+      group: fabric
+
+    # Hosts
+    server-a:
+      kind: linux
+      mgmt-ipv4: 172.30.0.31
+      binds:
+        - config/server-a.sh:/tmp/startup.sh
+      group: site-a
+    server-b:
+      kind: linux
+      mgmt-ipv4: 172.30.0.32
+      binds:
+        - config/server-b.sh:/tmp/startup.sh
+      group: site-b
+
+  links:
+    - endpoints: ["r01:Gi0-0-0-0", "r03:Gi0-0-0-0"]
+    - endpoints: ["r01:Gi0-0-0-1", "r02:Gi0-0-0-0"]
+    - endpoints: ["r02:Gi0-0-0-1", "r03:Gi0-0-0-1"]
+    - endpoints: ["r02:Gi0-0-0-2", "r06:Gi0-0-0-0"]
+    - endpoints: ["r02:Gi0-0-0-3", "r04:Gi0-0-0-2"]
+    - endpoints: ["r03:Gi0-0-0-2", "r05:Gi0-0-0-0"]
+    - endpoints: ["r03:Gi0-0-0-3", "r04:Gi0-0-0-0"]
+    - endpoints: ["r04:Gi0-0-0-1", "r05:Gi0-0-0-1"]
+    - endpoints: ["r04:Gi0-0-0-3", "r06:Gi0-0-0-3"]
+    - endpoints: ["r05:Gi0-0-0-2", "r06:Gi0-0-0-1"]
+    - endpoints: ["r05:Gi0-0-0-3", "r07:Gi0-0-0-0"]
+    - endpoints: ["r06:Gi0-0-0-2", "r07:Gi0-0-0-1"]
+    - endpoints: ["server-a:eth1", "r01:Gi0-0-0-2"]
+    - endpoints: ["r07:Gi0-0-0-2", "server-b:eth1"]

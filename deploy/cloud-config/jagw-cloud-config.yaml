@@ -1,0 +1,31 @@
+---
+#cloud-config
+users:
+  - name: ins
+    plain_text_passwd: very_secure_password
+    lock_passwd: false
+    groups: sudo
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+ssh_pwauth: true
+preserve_hostname: true
+
+...
+network:
+  version: 2
+  renderer: networkd
+  ethernets:
+    ens2:
+      dhcp4: no
+      dhcp6: no
+      accept-ra: false
+      addresses:
+        - 192.168.250.11/24
+      routes:
+        - to: default
+          via: 192.168.250.1
+      nameservers:
+        addresses:
+          - 152.96.13.53
+          - 152.96.13.54
+...

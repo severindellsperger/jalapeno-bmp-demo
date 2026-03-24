@@ -1,0 +1,71 @@
+- name: Add containerlab binary
+  ansible.builtin.unarchive:
+    remote_src: true
+    src: "https://github.com/srl-labs/containerlab/releases/download/v{{ containerlab_version }}/containerlab_{{ containerlab_version }}_linux_amd64.tar.gz"
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: "4755" # SUID
+    extra_opts:
+      - containerlab
+
+- name: Create clab_admins system group
+  ansible.builtin.group:
+    name: clab_admins
+    system: true
+    state: present
+
+- name: Add user to clab_admins group
+  ansible.builtin.user:
+    name: "{{ lab_user }}"
+    groups: clab_admins
+    append: true
+
+- name: Ensure bash completion directory exists
+  ansible.builtin.file:
+    path: /usr/share/bash-completion/completions
+    state: directory
+    mode: "0755"
+
+- name: Install containerlab bash completion
+  ansible.builtin.shell: "containerlab completion bash > /usr/share/bash-completion/completions/containerlab"
+  args:
+    creates: /usr/share/bash-completion/completions/containerlab
+
+- name: Create symlink /usr/local/bin/clab
+  ansible.builtin.file:
+    src: /usr/local/bin/containerlab
+    dest: /usr/local/bin/clab
+    state: link
+
+- name: Define XRd sysctl tuning variables
+  when: containerlab_xrd | default(false) | bool
+  ansible.builtin.set_fact:
+    sysctl_settings:
+      fs.inotify.max_user_instances: 64000
+      fs.inotify.max_user_watches: 64000
+      net.core.netdev_max_backlog: 300000
+      net.core.optmem_max: 67108864
+      net.core.rmem_default: 67108864
+      net.core.rmem_max: 67108864
+      net.core.wmem_default: 67108864
+      net.core.wmem_max: 67108864
+
+- name: Apply sysctl settings at runtime
+  when: containerlab_xrd | default(false) | bool
+  ansible.builtin.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: true
+  loop: "{{ sysctl_settings | dict2items }}"
+
+- name: Write persistent sysctl config
+  when: containerlab_xrd | default(false) | bool
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/inotify.conf
+    mode: "0644"
+    content: |-
+      {% for key, value in sysctl_settings.items() -%}
+      {{ key }}={{ value }}
+      {% endfor %}

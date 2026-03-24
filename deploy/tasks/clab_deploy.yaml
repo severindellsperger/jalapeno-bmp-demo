@@ -1,0 +1,33 @@
+- name: Docker login
+  ansible.builtin.docker_login:
+    registry_url: "{{ docker_registry | default('registry.gitlab.ost.ch:45023') }}"
+    username: "{{ docker_user }}"
+    password: "{{ docker_password }}"
+  when:
+    - docker_user is defined
+    - docker_password is defined
+
+- name: Set lab variables
+  ansible.builtin.set_fact:
+    clab_deploy_path: "{{ lab_target_path }}/{{ lab_subfolder | default('') | trim('/') }}"
+
+- name: Clone lab repository
+  ansible.builtin.git:
+    repo: >-
+      {%- if git_user is defined and git_password is defined -%}
+      https://{{ git_user }}:{{ git_password }}@{{ lab_repo | regex_replace('https://','') | trim }}
+      {%- else -%}
+      {{ lab_repo | trim }}
+      {%- endif -%}
+    dest: "{{ lab_target_path }}"
+    update: true
+
+- name: Deploy lab via containerlab
+  ansible.builtin.command: containerlab deploy
+  args:
+    chdir: "{{ clab_deploy_path }}"
+  register: clab_result
+
+- name: Show containerlab deploy output
+  ansible.builtin.debug:
+    var: clab_result.stdout_lines

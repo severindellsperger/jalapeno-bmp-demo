@@ -1,0 +1,22 @@
+- name: Add helm binary
+  ansible.builtin.unarchive:
+    remote_src: true
+    src: "https://get.helm.sh/helm-v{{ helm_version }}-linux-amd64.tar.gz"
+    dest: /usr/local/bin
+    owner: root
+    group: root
+    mode: "0755"
+    extra_opts:
+      - --strip-components=1
+      - linux-amd64/helm
+
+- name: Ensure bash completion directory exists
+  ansible.builtin.file:
+    path: /usr/share/bash-completion/completions
+    state: directory
+    mode: "0755"
+
+- name: Install helm bash completion
+  ansible.builtin.shell: "helm completion bash > /usr/share/bash-completion/completions/helm"
+  args:
+    creates: /usr/share/bash-completion/completions/helm

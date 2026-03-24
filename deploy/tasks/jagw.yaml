@@ -1,0 +1,46 @@
+- name: Set JAGW helm values
+  ansible.builtin.set_fact:
+    jagw_values:
+      config:
+        arangoDB: arangodb.jalapeno.svc.cluster.local:8529
+        arangoDBUser: root
+        arangoDBPassword: jalapeno
+        arangoDBName: jalapeno
+        redisPassword: a-very-complex-password-here
+        sentinelPassword: a-very-complex-password-here
+        sentinelAddress: jagw-redis.jagw.svc.cluster.local:26379
+        sentinelMaster: mymaster
+        kafkaAddress: kafka-headless.jalapeno.svc.cluster.local:9092
+        influxDBUrl: influxdb.jalapeno.svc.cluster.local:8086
+        influxDBUser: admin # needs to match influxUser in Jalapeno Deployment
+        influxDBPassword: jalapeno # needs to match influxPassword in Jalapeno deployment
+        influxDB: mdt_db
+      # Dependencies
+      redis:
+        global:
+          redis:
+            password: a-very-complex-password-here
+        replica:
+          replicaCount: 1
+      proxy:
+        config:
+          service:
+            type: NodePort
+            nodePort:
+              subscriptionServiceNodePort: 31146
+              requestServiceNodePort: 31147
+
+- name: Clone jagw-helm repo
+  ansible.builtin.git:
+    repo: https://github.com/jalapeno-api-gateway/jagw-helm.git
+    dest: "/home/{{ lab_user }}/jagw-helm"
+    version: main
+    update: true
+
+- name: Deploy JAGW helm chart
+  kubernetes.core.helm:
+    name: jagw
+    chart_ref: "/home/{{ lab_user }}/jagw-helm/jagw"
+    release_namespace: jagw
+    create_namespace: true
+    values: "{{ jagw_values }}"

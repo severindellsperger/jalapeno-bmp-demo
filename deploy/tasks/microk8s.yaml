@@ -1,0 +1,53 @@
+- name: Ensure snapd is installed
+  ansible.builtin.package:
+    name: snapd
+    state: present
+
+- name: Install microK8s
+  community.general.snap:
+    name: microk8s
+    classic: true
+    channel: "{{ microk8s_channel }}"
+    state: present
+
+- name: Wait for microk8s to be ready
+  ansible.builtin.command: microk8s status --wait-ready
+  register: microk8s_status
+  retries: 10
+  delay: 10
+  until: microk8s_status.rc == 0
+  changed_when: false
+
+- name: Enable hostpath-storage
+  ansible.builtin.command: microk8s enable hostpath-storage
+  args:
+    creates: /var/snap/microk8s/common/default-storage
+  register: storage_output
+  changed_when: "'Nothing to do for hostpath-storage' not in storage_output.stdout"
+
+- name: Add user to microk8s group
+  ansible.builtin.user:
+    name: "{{ lab_user }}"
+    groups: microk8s
+    append: true
+
+- name: Create .kube directory
+  ansible.builtin.file:
+    path: "/home/{{ lab_user }}/.kube"
+    state: directory
+    owner: "{{ lab_user }}"
+    group: "{{ lab_user }}"
+    mode: '0755'
+
+- name: Get microk8s kubeconfig
+  ansible.builtin.command: microk8s config
+  register: microk8s_kubeconfig
+  changed_when: false
+
+- name: Write kubeconfig
+  ansible.builtin.copy:
+    dest: "/home/{{ lab_user }}/.kube/config"
+    owner: "{{ lab_user }}"
+    group: "{{ lab_user }}"
+    mode: '0600'
+    content: "{{ microk8s_kubeconfig.stdout }}"

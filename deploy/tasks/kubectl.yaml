@@ -1,0 +1,20 @@
+- name: Install kubectl to /usr/local/bin
+  ansible.builtin.get_url:
+    url: "https://dl.k8s.io/release/v{{ kubectl_version }}/bin/linux/amd64/kubectl"
+    dest: /usr/local/bin/kubectl
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Ensure bash-completion directory exists
+  ansible.builtin.file:
+    path: /usr/share/bash-completion/completions
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install kubectl bash completion
+  ansible.builtin.shell: "kubectl completion bash > /usr/share/bash-completion/completions/kubectl"
+  args:
+    creates: /usr/share/bash-completion/completions/kubectl

@@ -1,0 +1,133 @@
+- name: Set Jalapeno helm values
+  ansible.builtin.set_fact:
+    jalapeno_values:
+      collectors:
+        gobmp:
+          replicas: 1
+          image: docker.io/sbezverk/gobmp:latest
+          resources:
+            requests:
+              memory: 50Mi
+              cpu: 10m
+            limits:
+              memory: 1024Mi
+              cpu: 1
+          externalAccess:
+            type: NodePort
+            nodePortIncomingBMPSessions: 30511
+            nodePortPerformanceMonitoring: 30767
+
+        telegrafIngress:
+          name: telegraf-ingress
+          replicas: 1
+          image: telegraf:1.36-alpine
+          imagePullSecret: regcred
+          externalAccess:
+            type: NodePort
+            nodePort: 32400
+
+      processors:
+        lslinknodeEdge:
+          name: linkstate-edge
+          replicas: 1
+          image: ghcr.io/jalapeno-api-gateway/jalapeno/linkstate-edge:v1.0.2
+        telegrafEgress:
+          name: telegraf-egress
+          replicas: 1
+          image: telegraf:1.36-alpine
+          imagePullSecret: regcred
+        topology:
+          name: topology
+          replicas: 1
+          image: ghcr.io/jalapeno-api-gateway/jalapeno/topology:v1.0.2
+
+      storage:
+        arangodb:
+          image: arangodb:3.12.5.2
+          # persistence:
+          #   dataSize: 1Gi
+          #   appsSize: 1Gi
+          externalAccess:
+            type: NodePort
+            nodePort: 30852
+
+        influxdb:
+          image: influxdb:1.12.2-alpine
+          # persistence:
+          #   size: 1Gi
+          externalAccess:
+            type: NodePort
+            nodePort: 30308
+
+      messaging:
+        kafka:
+          name: kafka
+          image: apache/kafka:3.9.1
+          replicas: 1
+          # persistence:
+          #   enabled: true
+          #   size: 1Gi
+          externalAccess:
+            type: NodePort
+            nodePort: 30994
+
+        kafkaUi:
+          enabled: true
+          image: ghcr.io/kafbat/kafka-ui:latest
+          externalAccess:
+            type: NodePort
+            nodePort: 30777
+
+      grafana:
+        replicas: 1
+        image:
+          tag: 12.1.1
+        deploymentStrategy:
+          type: Recreate
+        # persistence:
+        #   enabled: true
+        #   type: pvc
+        #   size: 1Gi
+        grafana.ini:
+          auth.anonymous:
+            enabled: true
+            org_role: Admin
+        service:
+          type: NodePort
+          nodePort: 30333
+        datasources:
+          datasources.yaml:
+            apiVersion: 1
+            datasources:
+              - name: InfluxDB_v1
+                type: influxdb
+                access: proxy
+                user: grafana
+                url: http://influxdb:8086
+                jsonData:
+                  dbName: mdt_db
+                  httpMode: GET
+                secureJsonData:
+                  password: grafana
+            deleteDatasources:
+              - name: InfluxDB_v1
+                orgId: 1
+        sidecar:
+          dashboards:
+            enabled: true
+            label: grafana-dashboard
+
+- name: Clone jalapeno-helm repo
+  ansible.builtin.git:
+    repo: https://github.com/jalapeno-api-gateway/jalapeno-helm.git
+    dest: "/home/{{ lab_user }}/jalapeno-helm"
+    version: main
+    update: true
+
+- name: Deploy Jalapeno helm chart
+  kubernetes.core.helm:
+    name: jalapeno
+    chart_ref: "/home/{{ lab_user }}/jalapeno-helm"
+    release_namespace: jalapeno
+    create_namespace: true
+    values: "{{ jalapeno_values }}"
