@@ -96,17 +96,35 @@ The deployment runs entirely on a single host:
   - Kafka UI: Port 30777
 - **Containerlab Network**:
   - Management Network: 172.30.0.0/24
-  - 7 XRd routers (r01-r07)
-  - 2 Linux hosts (server-a, server-b)
+  - 7 XRd routers (r01-r07) running ISIS + SRv6 + BGP-LS
+  - 2 Linux hosts (server-a at 10.1.0.0/24, server-b at 10.2.0.0/24)
   - XRd routers send BMP/telemetry to host IP: 172.30.0.1
+  - BMP Configuration: r01 and r07 configured with BMP server
+  - Customer sites: Site A (server-a) connected to r01, Site B (server-b) connected to r07
 
 ## Prerequisites
 
 - Ubuntu 22.04 or later
 - Minimum 16GB RAM, 8 CPU cores
 - Python 3.10+
-- Ansible installed
+- Ansible (install with `make install-deps` if not present)
 - SSH access to target host (or run locally on the target host)
+- Cisco XRd control-plane Docker image (see below)
+
+### XRd Image Setup
+
+The lab requires the Cisco XRd control-plane Docker image. Load it into your local Docker registry:
+
+```bash
+# Extract the XRd control-plane tarball
+tar -xvzf xrd-control-plane-container-x86.7.11.1.tgz
+
+# Load the XRd image into Docker
+docker load -i xrd-control-plane-container-x64.dockerv1.tgz-7.11.1
+
+# Tag the image (if needed)
+docker tag <loaded-image-id> ios-xr/xrd-control-plane:25.3.1
+```
 
 ## Configuration
 
@@ -134,49 +152,6 @@ all:
 ```
 
 Edit `deploy/inventory.yaml` to match your deployment target.
-
-### Password Management
-
-This deployment requires several passwords to be configured:
-
-#### 1. Docker Registry Credentials
-If using a private Docker registry (default: `registry.gitlab.ost.ch:45023`), configure credentials:
-
-**Option A - Environment Variables**:
-```bash
-export DOCKER_USER=your_username
-export DOCKER_PASSWORD=your_password
-make deploy
-```
-
-**Option B - Command Line**:
-```bash
-make deploy DOCKER_USER=your_username DOCKER_PASSWORD=your_password
-```
-
-**Option C - Ansible Extra Vars**:
-```bash
-cd deploy
-ansible-playbook site.yaml -e "docker_user=your_username" -e "docker_password=your_password"
-```
-
-If credentials are not provided, the deployment will skip Docker registry login (using placeholder defaults: `very_secure_username` / `very_secure_password`).
-
-#### 2. XRd Router Passwords
-Router CLI passwords are configured in `clab/config/r*.cfg` files:
-- Default username: `cisco` (r01, r02, r04-r07) or `ins` (r03)
-- Default password: `very_secure_password`
-
-**To customize router passwords**, edit the `secret` line in each router config file before deployment:
-```
-username cisco
- secret YOUR_CUSTOM_PASSWORD
-```
-
-After deployment, access routers via:
-```bash
-ssh cisco@172.30.0.11  # Use your configured password
-```
 
 ## Quick Start
 
@@ -216,15 +191,6 @@ This will:
 
    If deploying to a remote host, you may be prompted for the SSH password.
 
-## Network Topology
-
-The Containerlab topology includes:
-- **Fabric routers**: r01-r07 (ISIS + SRv6 + BGP-LS)
-- **Customer sites**:
-  - Site A: server-a (10.1.0.0/24) connected to r01
-  - Site B: server-b (10.2.0.0/24) connected to r07
-- **BMP Configuration**: r01 and r07 configured with BMP server pointing to host
-
 ## Access Points
 
 After deployment, access services via:
@@ -251,7 +217,7 @@ sudo containerlab inspect -t clab/bmp.clab.yaml
 
 **Access router CLI**:
 ```bash
-ssh cisco@172.30.0.11  # Password: very_secure_password (or your custom password)
+ssh cisco@172.30.0.11  # Username: cisco, Password: very_secure_password
 ```
 
 **Check Jalapeno pods**:
@@ -294,13 +260,6 @@ The repository structure:
     ├── inventory.yaml         # Ansible inventory (localhost default)
     └── tasks/                 # Ansible task files
 ```
-
-## Migration Notes
-
-This repository has been migrated from a split-host architecture to single-node:
-- **Previous**: Separate hosts for Jalapeno (jagw) and Containerlab (infra)
-- **Current**: Unified deployment on single host
-- **Key Change**: XRd routers now point to 172.30.0.1 (host bridge) instead of 192.168.250.11
 
 ## References
 
