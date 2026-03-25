@@ -7,7 +7,6 @@
     microk8s_channel: 1.34/stable
     containerlab_version: 0.71.1
     containerlab_xrd: true
-    go_version: 1.25.4
   tasks:
     - name: Deploy Kubernetes, Containerlab, and dependencies (as root)
       become: true
@@ -25,10 +24,10 @@
           ansible.builtin.include_tasks: ./tasks/docker.yaml
         - name: Deploy Containerlab
           ansible.builtin.include_tasks: ./tasks/containerlab.yaml
-        - name: Install Go
-          ansible.builtin.include_tasks: ./tasks/go.yaml
 
     - name: Deploy Jalapeno, JAGW, and Networking Lab (as user)
+      environment:
+        KUBECONFIG: "/home/{{ lab_user }}/.kube/config"
       block:
         # Deploy Jalapeno stack
         - name: Install Jalapeno via Helm
@@ -38,15 +37,11 @@
 
         # Deploy Containerlab topology
         - name: Deploy Containerlab topology
-          vars:
-            clab_file: ../clab/bmp.clab.yaml
-          block:
-            - name: Deploy lab via containerlab
-              ansible.builtin.command: containerlab deploy --topo {{ clab_file }}
-              args:
-                chdir: "/home/{{ lab_user }}"
-              register: clab_result
+          ansible.builtin.command: containerlab deploy --topo {{ playbook_dir }}/../clab/bmp.clab.yaml
+          args:
+            chdir: "/home/{{ lab_user }}"
+          register: clab_result
 
-            - name: Show containerlab deploy output
-              ansible.builtin.debug:
-                var: clab_result.stdout_lines
+        - name: Show containerlab deploy output
+          ansible.builtin.debug:
+            var: clab_result.stdout_lines
