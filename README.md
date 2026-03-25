@@ -15,7 +15,7 @@ This repository provides a complete single-node deployment combining:
 ### Network Diagram
 
 ```mermaid
-graph LR
+graph TB
     GW["Gateway<br/>172.30.0.1"]
 
     subgraph K8s["MicroK8s Services"]
@@ -39,7 +39,7 @@ graph LR
         SB["server-b<br/>172.30.0.32"]
     end
 
-    %% Physical topology (left to right)
+    %% Physical topology
     SA --- R01
     R01 --- R02
     R01 --- R03
