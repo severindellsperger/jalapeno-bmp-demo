@@ -1,4 +1,4 @@
-name: closing
+name: bmp
 prefix: ""
 
 mgmt:
@@ -8,9 +8,9 @@ mgmt:
 topology:
   kinds:
     xrd:
-      image: registry.gitlab.ost.ch:45023/ins-infrastructure/kubevirt-images/xrd-control-plane:24.4.1
+      image: ios-xr/xrd-control-plane:25.3.1
     linux:
-      image: ghcr.io/srl-labs/network-multitool:v0.2.1
+      image: nicolaka/netshoot
       exec:
         - bash /tmp/startup.sh
   nodes:
