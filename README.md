@@ -15,11 +15,11 @@ This repository provides a complete single-node deployment combining:
 ### Network Diagram
 
 ```mermaid
-graph TB
-    GW["Gateway: 172.30.0.1<br/>(Host Bridge IP)"]
+graph LR
+    subgraph Host["Host Machine"]
+        GW["Gateway<br/>172.30.0.1"]
 
-    subgraph Host["Host Machine (e.g., 192.168.1.100)"]
-        subgraph K8s["MicroK8s (NodePort Services)"]
+        subgraph K8s["MicroK8s Services"]
             BMP["BMP Server<br/>:30511"]
             TEL["Telegraf<br/>:32400"]
             GRAF["Grafana<br/>:30333"]
@@ -29,23 +29,19 @@ graph TB
         end
 
         subgraph CL["Containerlab Network (172.30.0.0/24)"]
-            SA["server-a<br/>172.30.0.31<br/>10.1.0.0/24"]
-
-            subgraph Fabric["Fabric Routers"]
-                R01["r01<br/>172.30.0.11<br/>1:1:1:1::"]
-                R02["r02<br/>172.30.0.12<br/>2:2:2:2::"]
-                R03["r03<br/>172.30.0.13<br/>3:3:3:3::"]
-                R04["r04<br/>172.30.0.14<br/>4:4:4:4::"]
-                R05["r05<br/>172.30.0.15<br/>5:5:5:5::"]
-                R06["r06<br/>172.30.0.16<br/>6:6:6:6::"]
-                R07["r07<br/>172.30.0.17<br/>7:7:7:7::"]
-            end
-
-            SB["server-b<br/>172.30.0.32<br/>10.2.0.0/24"]
+            SA["server-a<br/>172.30.0.31"]
+            R01["r01<br/>172.30.0.11"]
+            R02["r02<br/>172.30.0.12"]
+            R03["r03<br/>172.30.0.13"]
+            R04["r04<br/>172.30.0.14"]
+            R05["r05<br/>172.30.0.15"]
+            R06["r06<br/>172.30.0.16"]
+            R07["r07<br/>172.30.0.17"]
+            SB["server-b<br/>172.30.0.32"]
         end
     end
 
-    %% Physical topology
+    %% Physical topology (left to right)
     SA --- R01
     R01 --- R02
     R01 --- R03
@@ -61,7 +57,7 @@ graph TB
     R06 --- R07
     R07 --- SB
 
-    %% BMP/Telemetry connections
+    %% BMP/Telemetry to Gateway
     R01 -.BMP/Telemetry.-> GW
     R02 -.Telemetry.-> GW
     R03 -.Telemetry.-> GW
@@ -69,6 +65,8 @@ graph TB
     R05 -.Telemetry.-> GW
     R06 -.Telemetry.-> GW
     R07 -.BMP/Telemetry.-> GW
+
+    %% Gateway to Services
     GW --> BMP
     GW --> TEL
 
@@ -78,7 +76,6 @@ graph TB
     style Host fill:#f9f9f9,stroke:#333,stroke-width:3px
     style K8s fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
     style CL fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style Fabric fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
     style BMP fill:#4caf50,stroke:#2e7d32
     style TEL fill:#4caf50,stroke:#2e7d32
     style GW fill:#ff9800,stroke:#e65100,stroke-width:2px
@@ -229,41 +226,3 @@ kubectl get pods -n jalapeno
 ```bash
 kubectl logs -n jalapeno -l app=gobmp
 ```
-
-## Troubleshooting
-
-### BMP Connection Issues
-
-If routers cannot connect to BMP server:
-1. Verify MicroK8s service is running: `kubectl get svc -n jalapeno gobmp`
-2. Check host firewall allows NodePort traffic
-3. Verify Containerlab network can reach host: `sudo docker exec -it clab-bmp-r01 ping 172.30.0.1`
-
-### Containerlab Network Issues
-
-If containers cannot reach host services:
-1. Check Docker bridge network: `docker network inspect clab`
-2. Verify iptables are not blocking: `sudo iptables -L -n | grep 172.30`
-3. Test connectivity from router: `sudo docker exec -it clab-bmp-r01 ping 172.30.0.1`
-
-## Development
-
-The repository structure:
-```
-.
-├── Makefile                    # Main deployment entry point
-├── clab/                       # Containerlab topology and configs
-│   ├── bmp.clab.yaml          # Network topology definition
-│   └── config/                # XRd router configurations
-└── deploy/                     # Ansible playbooks and tasks
-    ├── site.yaml              # Main playbook (single-node)
-    ├── inventory.yaml         # Ansible inventory (localhost default)
-    └── tasks/                 # Ansible task files
-```
-
-## References
-
-- [MicroK8s](https://github.com/canonical/microk8s) - Lightweight Kubernetes
-- [Jalapeno](https://github.com/cisco-open/jalapeno) - Network observability platform
-- [Jalapeno API Gateway](https://github.com/jalapeno-api-gateway) - gRPC API gateway
-- [Containerlab](https://github.com/srl-labs/containerlab) - Network topology builder
