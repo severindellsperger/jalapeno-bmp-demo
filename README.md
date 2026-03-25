@@ -19,6 +19,7 @@ graph TB
     GW["Gateway<br/>172.30.0.1"]
 
     subgraph K8s["MicroK8s Services"]
+        direction TB
         BMP["BMP Server<br/>:30511"]
         TEL["Telegraf<br/>:32400"]
         GRAF["Grafana<br/>:30333"]
@@ -28,16 +29,26 @@ graph TB
     end
 
     subgraph CL["Containerlab Network (172.30.0.0/24)"]
-        SA["server-a<br/>172.30.0.31"<br/>10.1.0.10/24]
-        R01["r01<br/>172.30.0.11"]
-        R02["r02<br/>172.30.0.12"]
-        R03["r03<br/>172.30.0.13"]
-        R04["r04<br/>172.30.0.14"]
-        R05["r05<br/>172.30.0.15"]
-        R06["r06<br/>172.30.0.16"]
-        R07["r07<br/>172.30.0.17"]
-        SB["server-b<br/>172.30.0.32"<br/>10.2.0.10/24]
+        direction TB
+        SA["server-a<br/>172.30.0.31<br/>10.1.0.10/24"]
+
+        subgraph Routers[" "]
+            direction TB
+            R01["r01<br/>172.30.0.11"]
+            R02["r02<br/>172.30.0.12"]
+            R03["r03<br/>172.30.0.13"]
+            R04["r04<br/>172.30.0.14"]
+            R05["r05<br/>172.30.0.15"]
+            R06["r06<br/>172.30.0.16"]
+            R07["r07<br/>172.30.0.17"]
+        end
+
+        SB["server-b<br/>172.30.0.32<br/>10.2.0.10/24"]
     end
+
+    %% Gateway connections
+    GW -.Management<br/>Network.-> K8s
+    GW -.Management<br/>Network.-> CL
 
     %% Physical topology
     SA --- R01
@@ -58,13 +69,26 @@ graph TB
     %% BGP peering
     R01 -.BGP.-> R07
 
+    %% Styling
     style K8s fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
     style CL fill:#fff3e0,stroke:#f57c00,stroke-width:2px
-    style BMP fill:#4caf50,stroke:#2e7d32
-    style TEL fill:#4caf50,stroke:#2e7d32
-    style GW fill:#ff9800,stroke:#e65100,stroke-width:2px
-    style SA fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
-    style SB fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
+    style Routers fill:#ffffff,stroke:#999999,stroke-width:1px
+    style BMP fill:#4caf50,stroke:#2e7d32,color:#fff
+    style TEL fill:#4caf50,stroke:#2e7d32,color:#fff
+    style GRAF fill:#9c27b0,stroke:#6a1b9a,color:#fff
+    style ARANGO fill:#9c27b0,stroke:#6a1b9a,color:#fff
+    style KAFKA fill:#9c27b0,stroke:#6a1b9a,color:#fff
+    style INFLUX fill:#9c27b0,stroke:#6a1b9a,color:#fff
+    style GW fill:#ff6f00,stroke:#e65100,stroke-width:3px,color:#fff
+    style SA fill:#fdd835,stroke:#f57f17,stroke-width:2px,color:#000
+    style SB fill:#fdd835,stroke:#f57f17,stroke-width:2px,color:#000
+    style R01 fill:#64b5f6,stroke:#1976d2,color:#000
+    style R02 fill:#64b5f6,stroke:#1976d2,color:#000
+    style R03 fill:#64b5f6,stroke:#1976d2,color:#000
+    style R04 fill:#64b5f6,stroke:#1976d2,color:#000
+    style R05 fill:#64b5f6,stroke:#1976d2,color:#000
+    style R06 fill:#64b5f6,stroke:#1976d2,color:#000
+    style R07 fill:#64b5f6,stroke:#1976d2,color:#000
 ```
 
 The deployment runs entirely on a single host:
