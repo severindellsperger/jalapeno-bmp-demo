@@ -5,10 +5,10 @@ Showcase Jalapeno BMP Collection with Cisco XRd in a unified single-node deploym
 ## Overview
 
 This repository provides a complete single-node deployment combining:
-- **MicroK8s**: Lightweight Kubernetes for Jalapeno stack
-- **Jalapeno**: BMP collection and network observability platform
-- **Containerlab**: Network topology with Cisco XRd routers
-- **API Gateway (JAGW)**: GraphQL API for network data
+- **[MicroK8s](https://github.com/canonical/microk8s)**: Lightweight Kubernetes for Jalapeno stack
+- **[Jalapeno](https://github.com/cisco-open/jalapeno)**: BMP collection and network observability platform
+- **[Jalapeno API Gateway](https://github.com/jalapeno-api-gateway)**: gRPC API for network data
+- **[Containerlab](https://github.com/srl-labs/containerlab)**: Network topology with Cisco XRd routers
 
 ## Architecture
 
@@ -16,7 +16,9 @@ This repository provides a complete single-node deployment combining:
 
 ```mermaid
 graph TB
-    subgraph Host["Host Machine (192.168.1.100)"]
+    GW["Gateway: 172.30.0.1<br/>(Host Bridge IP)"]
+
+    subgraph Host["Host Machine (e.g., 192.168.1.100)"]
         subgraph K8s["MicroK8s (NodePort Services)"]
             BMP["BMP Server<br/>:30511"]
             TEL["Telegraf<br/>:32400"]
@@ -26,8 +28,8 @@ graph TB
             INFLUX["InfluxDB<br/>:30308"]
         end
 
-        subgraph CL["Containerlab Network<br/>(172.30.0.0/24)"]
-            GW["Gateway<br/>172.30.0.1"]
+        subgraph CL["Containerlab Network (172.30.0.0/24)"]
+            SA["server-a<br/>172.30.0.31<br/>10.1.0.0/24"]
 
             subgraph Fabric["Fabric Routers"]
                 R01["r01<br/>172.30.0.11<br/>1:1:1:1::"]
@@ -39,12 +41,12 @@ graph TB
                 R07["r07<br/>172.30.0.17<br/>7:7:7:7::"]
             end
 
-            SA["server-a<br/>172.30.0.31<br/>10.1.0.0/24"]
             SB["server-b<br/>172.30.0.32<br/>10.2.0.0/24"]
         end
     end
 
     %% Physical topology
+    SA --- R01
     R01 --- R02
     R01 --- R03
     R02 --- R03
@@ -57,7 +59,6 @@ graph TB
     R05 --- R06
     R05 --- R07
     R06 --- R07
-    R01 --- SA
     R07 --- SB
 
     %% BMP/Telemetry connections
@@ -81,6 +82,8 @@ graph TB
     style BMP fill:#4caf50,stroke:#2e7d32
     style TEL fill:#4caf50,stroke:#2e7d32
     style GW fill:#ff9800,stroke:#e65100,stroke-width:2px
+    style SA fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
+    style SB fill:#ffeb3b,stroke:#f57f17,stroke-width:2px
 ```
 
 The deployment runs entirely on a single host:
@@ -102,19 +105,41 @@ The deployment runs entirely on a single host:
 - Ubuntu 22.04 or later
 - Minimum 16GB RAM, 8 CPU cores
 - Python 3.10+
-- Ansible installed on deployment machine
-- SSH access to target host
+- Ansible installed
+- SSH access to target host (or run locally on the target host)
 
 ## Configuration
+
+### Inventory Setup
+
+The deployment uses `deploy/inventory.yaml` to define the target host.
+
+**Default (localhost)**: Deploy on the current machine
+```yaml
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+```
+
+**Remote host**: Deploy to a remote server
+```yaml
+all:
+  hosts:
+    remote_host:
+      ansible_host: 192.168.1.100  # Your server IP
+      ansible_port: 22
+      ansible_user: ins
+      # Use SSH keys or will prompt for password
+```
+
+Edit `deploy/inventory.yaml` to match your deployment target.
 
 ### Password Management
 
 This deployment requires several passwords to be configured:
 
-#### 1. SSH Password (Target Host)
-The Ansible playbook will prompt for the SSH password to access the target host as user `ins`.
-
-#### 2. Docker Registry Credentials
+#### 1. Docker Registry Credentials
 If using a private Docker registry (default: `registry.gitlab.ost.ch:45023`), configure credentials:
 
 **Option A - Environment Variables**:
@@ -132,17 +157,17 @@ make deploy DOCKER_USER=your_username DOCKER_PASSWORD=your_password
 **Option C - Ansible Extra Vars**:
 ```bash
 cd deploy
-ansible-playbook -u ins -k site.yaml -e "docker_user=your_username" -e "docker_password=your_password"
+ansible-playbook site.yaml -e "docker_user=your_username" -e "docker_password=your_password"
 ```
 
-If credentials are not provided, the deployment will skip Docker registry login (using placeholder defaults).
+If credentials are not provided, the deployment will skip Docker registry login (using placeholder defaults: `very_secure_username` / `very_secure_password`).
 
-#### 3. XRd Router Passwords
-Router CLI passwords are configured in `deploy/config/r*.cfg` files:
+#### 2. XRd Router Passwords
+Router CLI passwords are configured in `clab/config/r*.cfg` files:
 - Default username: `cisco` (r01, r02, r04-r07) or `ins` (r03)
 - Default password: `very_secure_password`
 
-**To customize router passwords**, edit the `secret` line in each router config file:
+**To customize router passwords**, edit the `secret` line in each router config file before deployment:
 ```
 username cisco
  secret YOUR_CUSTOM_PASSWORD
@@ -163,20 +188,17 @@ make deploy
 
 This will:
 1. Check dependencies
-2. Generate Ansible inventory
-3. Deploy MicroK8s and Jalapeno
-4. Deploy Docker and Containerlab
-5. Start the network topology
+2. Deploy MicroK8s and Jalapeno
+3. Deploy Docker and Containerlab
+4. Start the network topology
 
 ### Step-by-Step Deployment
 
 1. **Configure target host**:
 
-   Edit `deploy/labs.yaml` and add your host IP(s):
-   ```yaml
-   labs:
-     - 192.168.1.100  # Your server IP
-   ```
+   Edit `deploy/inventory.yaml`:
+   - For localhost deployment: Use default configuration
+   - For remote host: Uncomment and update the remote_host section
 
 2. **Setup Python environment** (optional, for development):
 
@@ -186,21 +208,13 @@ This will:
    source .venv/bin/activate
    ```
 
-3. **Generate inventory**:
-
-   ```bash
-   make setup-inventory
-   ```
-
-   Review the generated `deploy/inventory.yaml` before proceeding.
-
-4. **Run deployment**:
+3. **Run deployment**:
 
    ```bash
    make deploy
    ```
 
-   You will be prompted for the SSH password for user `ins` on the target host.
+   If deploying to a remote host, you may be prompted for the SSH password.
 
 ## Network Topology
 
@@ -220,30 +234,6 @@ After deployment, access services via:
 - **Kafka UI**: http://\<host-ip\>:30777
 - **InfluxDB**: http://\<host-ip\>:30308
 
-## IP Schema
-
-### Single-Node Architecture
-
-```
-Host Machine (e.g., 192.168.1.100)
-├── MicroK8s (NodePort services on host IP)
-│   ├── BMP Server: 0.0.0.0:30511
-│   └── Telegraf: 0.0.0.0:32400
-└── Containerlab (mgmt network: 172.30.0.0/24)
-    ├── Host bridge IP: 172.30.0.1 (gateway)
-    ├── r01: 172.30.0.11
-    ├── r02: 172.30.0.12
-    ├── r03: 172.30.0.13
-    ├── r04: 172.30.0.14
-    ├── r05: 172.30.0.15
-    ├── r06: 172.30.0.16
-    ├── r07: 172.30.0.17
-    ├── server-a: 172.30.0.31
-    └── server-b: 172.30.0.32
-```
-
-XRd routers send BMP and telemetry data to **172.30.0.1** (the host bridge IP), which routes to MicroK8s NodePort services.
-
 ## Management
 
 ### Destroy Topology
@@ -256,7 +246,7 @@ make destroy
 
 **Check Containerlab status**:
 ```bash
-sudo containerlab inspect -t deploy/closing.clab.yaml
+sudo containerlab inspect -t clab/bmp.clab.yaml
 ```
 
 **Access router CLI**:
@@ -281,14 +271,14 @@ kubectl logs -n jalapeno -l app=gobmp
 If routers cannot connect to BMP server:
 1. Verify MicroK8s service is running: `kubectl get svc -n jalapeno gobmp`
 2. Check host firewall allows NodePort traffic
-3. Verify Containerlab network can reach host: `sudo docker exec -it clab-closing-r01 ping 172.30.0.1`
+3. Verify Containerlab network can reach host: `sudo docker exec -it clab-bmp-r01 ping 172.30.0.1`
 
 ### Containerlab Network Issues
 
 If containers cannot reach host services:
 1. Check Docker bridge network: `docker network inspect clab`
 2. Verify iptables are not blocking: `sudo iptables -L -n | grep 172.30`
-3. Test connectivity from router: `sudo containerlab exec -t deploy/closing.clab.yaml --label clab-node-name=r01 "ping 172.30.0.1"`
+3. Test connectivity from router: `sudo docker exec -it clab-bmp-r01 ping 172.30.0.1`
 
 ## Development
 
@@ -296,15 +286,13 @@ The repository structure:
 ```
 .
 ├── Makefile                    # Main deployment entry point
-├── deploy/                     # Ansible playbooks and configs
-│   ├── site.yaml              # Main playbook (single-node)
-│   ├── labs.yaml              # Host configuration
-│   ├── inventory-template.yaml.j2
-│   ├── gen-inv.yaml           # Inventory generator
-│   ├── closing.clab.yaml      # Containerlab topology
-│   ├── config/                # XRd router configurations
-│   └── tasks/                 # Ansible task files
-└── infrastructure/            # Original split-host configs (deprecated)
+├── clab/                       # Containerlab topology and configs
+│   ├── bmp.clab.yaml          # Network topology definition
+│   └── config/                # XRd router configurations
+└── deploy/                     # Ansible playbooks and tasks
+    ├── site.yaml              # Main playbook (single-node)
+    ├── inventory.yaml         # Ansible inventory (localhost default)
+    └── tasks/                 # Ansible task files
 ```
 
 ## Migration Notes
@@ -313,3 +301,10 @@ This repository has been migrated from a split-host architecture to single-node:
 - **Previous**: Separate hosts for Jalapeno (jagw) and Containerlab (infra)
 - **Current**: Unified deployment on single host
 - **Key Change**: XRd routers now point to 172.30.0.1 (host bridge) instead of 192.168.250.11
+
+## References
+
+- [MicroK8s](https://github.com/canonical/microk8s) - Lightweight Kubernetes
+- [Jalapeno](https://github.com/cisco-open/jalapeno) - Network observability platform
+- [Jalapeno API Gateway](https://github.com/jalapeno-api-gateway) - gRPC API gateway
+- [Containerlab](https://github.com/srl-labs/containerlab) - Network topology builder

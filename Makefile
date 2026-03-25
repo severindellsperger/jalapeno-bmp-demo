@@ -1,4 +1,4 @@
-.PHONY: help deploy destroy setup-inventory clean check-deps
+.PHONY: help deploy destroy clean check-deps
 
 # Default target
 help:
@@ -7,12 +7,12 @@ help:
 	@echo "Available targets:"
 	@echo "  make deploy          - Deploy complete stack (MicroK8s, Jalapeno, Containerlab)"
 	@echo "  make destroy         - Destroy Containerlab topology only"
-	@echo "  make setup-inventory - Generate Ansible inventory from labs.yaml"
 	@echo "  make clean           - Clean up all deployments"
 	@echo "  make check-deps      - Check required dependencies"
 	@echo ""
 	@echo "Configuration:"
-	@echo "  Edit deploy/labs.yaml to specify target host(s)"
+	@echo "  Edit deploy/inventory.yaml to configure target host"
+	@echo "  Default: deploys to localhost"
 	@echo ""
 	@echo "Docker Registry Credentials:"
 	@echo "  Set environment variables DOCKER_USER and DOCKER_PASSWORD, or"
@@ -27,21 +27,13 @@ check-deps:
 	@command -v python3 >/dev/null 2>&1 || { echo "Error: python3 not found"; exit 1; }
 	@echo "All dependencies satisfied."
 
-# Setup inventory
-setup-inventory:
-	@echo "Generating inventory from labs.yaml..."
-	@cd deploy && ansible-playbook gen-inv.yaml
-	@echo "Inventory generated at deploy/inventory.yaml"
-	@echo ""
-	@echo "IMPORTANT: Please review deploy/inventory.yaml before proceeding!"
-
 # Deploy entire stack
-deploy: check-deps setup-inventory
+deploy: check-deps
 	@echo "Starting deployment of Jalapeno BMP Demo..."
 	@if [ -n "$(DOCKER_USER)" ] && [ -n "$(DOCKER_PASSWORD)" ]; then \
-		cd deploy && ansible-playbook -u ins -k site.yaml -e "docker_user=$(DOCKER_USER)" -e "docker_password=$(DOCKER_PASSWORD)"; \
+		cd deploy && ansible-playbook site.yaml -e "docker_user=$(DOCKER_USER)" -e "docker_password=$(DOCKER_PASSWORD)"; \
 	else \
-		cd deploy && ansible-playbook -u ins -k site.yaml; \
+		cd deploy && ansible-playbook site.yaml; \
 	fi
 	@echo ""
 	@echo "Deployment complete!"
@@ -57,7 +49,7 @@ deploy: check-deps setup-inventory
 # Destroy only Containerlab topology
 destroy:
 	@echo "Destroying Containerlab topology..."
-	@cd deploy && sudo containerlab destroy --topo closing.clab.yaml || true
+	@sudo containerlab destroy --topo clab/bmp.clab.yaml || true
 	@echo "Containerlab topology destroyed."
 
 # Clean everything

@@ -1,6 +1,0 @@
-# This is the list of gateway addresses of the started LTB labs.
-labs: []
-# - 192.168.122.75 # jagw01 and infra01
-# - 10.8.34.22     # jagw02 and infra02
-# ...
-

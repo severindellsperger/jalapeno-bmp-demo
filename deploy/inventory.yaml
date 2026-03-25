@@ -1,0 +1,20 @@
+# Ansible Inventory for Jalapeno BMP Demo
+#
+# Default configuration: Deploy to localhost
+# This assumes you are running the deployment on the target host itself.
+#
+# To deploy to a remote host, uncomment and modify the remote_host section below:
+#
+# all:
+#   hosts:
+#     remote_host:
+#       ansible_host: 192.168.1.100  # Replace with your server IP
+#       ansible_port: 22
+#       ansible_user: ins             # SSH username
+#       # ansible_password: your_password  # Or use SSH keys
+
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
+      ansible_python_interpreter: /usr/bin/python3

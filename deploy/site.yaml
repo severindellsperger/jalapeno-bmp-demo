@@ -43,7 +43,7 @@
         # Deploy Containerlab topology
         - name: Deploy Containerlab topology
           vars:
-            clab_file: ./closing.clab.yaml
+            clab_file: ../clab/bmp.clab.yaml
           block:
             - name: Docker login
               ansible.builtin.docker_login:
