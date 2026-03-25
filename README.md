@@ -55,19 +55,6 @@ graph LR
     R06 --- R07
     R07 --- SB
 
-    %% BMP/Telemetry to Gateway
-    R01 -.BMP/Telemetry.-> GW
-    R02 -.Telemetry.-> GW
-    R03 -.Telemetry.-> GW
-    R04 -.Telemetry.-> GW
-    R05 -.Telemetry.-> GW
-    R06 -.Telemetry.-> GW
-    R07 -.BMP/Telemetry.-> GW
-
-    %% Gateway to Services
-    GW --> BMP
-    GW --> TEL
-
     %% BGP peering
     R01 -.BGP.-> R07
 
