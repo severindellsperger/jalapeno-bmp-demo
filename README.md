@@ -16,29 +16,27 @@ This repository provides a complete single-node deployment combining:
 
 ```mermaid
 graph LR
-    subgraph Host["Host Machine"]
-        GW["Gateway<br/>172.30.0.1"]
+    GW["Gateway<br/>172.30.0.1"]
 
-        subgraph K8s["MicroK8s Services"]
-            BMP["BMP Server<br/>:30511"]
-            TEL["Telegraf<br/>:32400"]
-            GRAF["Grafana<br/>:30333"]
-            ARANGO["ArangoDB<br/>:30852"]
-            KAFKA["Kafka UI<br/>:30777"]
-            INFLUX["InfluxDB<br/>:30308"]
-        end
+    subgraph K8s["MicroK8s Services"]
+        BMP["BMP Server<br/>:30511"]
+        TEL["Telegraf<br/>:32400"]
+        GRAF["Grafana<br/>:30333"]
+        ARANGO["ArangoDB<br/>:30852"]
+        KAFKA["Kafka UI<br/>:30777"]
+        INFLUX["InfluxDB<br/>:30308"]
+    end
 
-        subgraph CL["Containerlab Network (172.30.0.0/24)"]
-            SA["server-a<br/>172.30.0.31"]
-            R01["r01<br/>172.30.0.11"]
-            R02["r02<br/>172.30.0.12"]
-            R03["r03<br/>172.30.0.13"]
-            R04["r04<br/>172.30.0.14"]
-            R05["r05<br/>172.30.0.15"]
-            R06["r06<br/>172.30.0.16"]
-            R07["r07<br/>172.30.0.17"]
-            SB["server-b<br/>172.30.0.32"]
-        end
+    subgraph CL["Containerlab Network (172.30.0.0/24)"]
+        SA["server-a<br/>172.30.0.31"]
+        R01["r01<br/>172.30.0.11"]
+        R02["r02<br/>172.30.0.12"]
+        R03["r03<br/>172.30.0.13"]
+        R04["r04<br/>172.30.0.14"]
+        R05["r05<br/>172.30.0.15"]
+        R06["r06<br/>172.30.0.16"]
+        R07["r07<br/>172.30.0.17"]
+        SB["server-b<br/>172.30.0.32"]
     end
 
     %% Physical topology (left to right)
@@ -73,7 +71,6 @@ graph LR
     %% BGP peering
     R01 -.BGP.-> R07
 
-    style Host fill:#f9f9f9,stroke:#333,stroke-width:3px
     style K8s fill:#e1f5ff,stroke:#0288d1,stroke-width:2px
     style CL fill:#fff3e0,stroke:#f57c00,stroke-width:2px
     style BMP fill:#4caf50,stroke:#2e7d32
