@@ -28,7 +28,7 @@ graph TB
     end
 
     subgraph CL["Containerlab Network (172.30.0.0/24)"]
-        SA["server-a<br/>172.30.0.31"]
+        SA["server-a<br/>172.30.0.31"<br/>10.1.0.10/24]
         R01["r01<br/>172.30.0.11"]
         R02["r02<br/>172.30.0.12"]
         R03["r03<br/>172.30.0.13"]
@@ -36,7 +36,7 @@ graph TB
         R05["r05<br/>172.30.0.15"]
         R06["r06<br/>172.30.0.16"]
         R07["r07<br/>172.30.0.17"]
-        SB["server-b<br/>172.30.0.32"]
+        SB["server-b<br/>172.30.0.32"<br/>10.2.0.10/24]
     end
 
     %% Physical topology
@@ -80,7 +80,7 @@ The deployment runs entirely on a single host:
   - 7 XRd routers (r01-r07) running ISIS + SRv6 + BGP-LS
   - 2 Linux hosts (server-a at 10.1.0.0/24, server-b at 10.2.0.0/24)
   - XRd routers send BMP/telemetry to host IP: 172.30.0.1
-  - BMP Configuration: r01 and r07 configured with BMP server
+  - BMP Configuration: r01 configured with BMP server
   - Customer sites: Site A (server-a) connected to r01, Site B (server-b) connected to r07
 
 ## Prerequisites
